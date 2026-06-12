@@ -8,13 +8,17 @@
 export default async function handler(req, res) {
   const apiKey = process.env.FOOTBALL_API_KEY || process.env.VITE_FOOTBALL_API_KEY
   if (!apiKey) {
-    res.status(500).json({ error: 'Football API key not configured' })
+    res.status(500).json({ error: 'Football API key not configured on the server' })
     return
   }
 
-  // req.url is e.g. /api/football/v4/competitions/WC/matches?foo=bar
-  const upstreamPath = req.url.replace(/^\/api\/football/, '')
-  const target = `https://api.football-data.org${upstreamPath}`
+  // Rebuild the upstream URL from the catch-all route params rather than
+  // req.url — on Vercel, [...path].js exposes the segments after
+  // /api/football/ as req.query.path, which is reliable across environments.
+  const { path = [], ...query } = req.query
+  const segments = Array.isArray(path) ? path : [path]
+  const qs = new URLSearchParams(query).toString()
+  const target = `https://api.football-data.org/${segments.join('/')}${qs ? `?${qs}` : ''}`
 
   try {
     const apiRes = await fetch(target, {
@@ -27,6 +31,8 @@ export default async function handler(req, res) {
     // Cache successful responses briefly to stay under the 10 req/min limit.
     if (apiRes.ok) {
       res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300')
+    } else {
+      console.error('football-data.org returned', apiRes.status, 'for', target, '→', body.slice(0, 200))
     }
     res.send(body)
   } catch (err) {

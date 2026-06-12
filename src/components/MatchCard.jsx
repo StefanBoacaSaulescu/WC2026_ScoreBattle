@@ -22,7 +22,7 @@ const FLAG_MAP = {
   'Turkey': '🇹🇷', 'Ukraine': '🇺🇦', 'Greece': '🇬🇷',
   'Egypt': '🇪🇬', 'Algeria': '🇩🇿', 'Mali': '🇲🇱',
   'Ivory Coast': '🇨🇮', 'Zambia': '🇿🇲', 'South Africa': '🇿🇦',
-  'Australia': '🇦🇺', 'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩',
+  'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩',
   'Iraq': '🇮🇶', 'Jordan': '🇯🇴', 'Uzbekistan': '🇺🇿',
   'China PR': '🇨🇳',
 }
