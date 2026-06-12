@@ -1,15 +1,22 @@
 // src/pages/AuthPage.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function AuthPage() {
-  const { loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth()
+  const { user, loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState('login') // 'login' | 'register'
   const [form, setForm] = useState({ email: '', password: '', name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Redirect to the matches page once auth state confirms a logged-in user.
+  // Driving this off `user` (rather than navigating right after the login call)
+  // avoids racing the onAuthStateChanged listener and bouncing off PrivateRoute.
+  useEffect(() => {
+    if (user) navigate('/', { replace: true })
+  }, [user, navigate])
 
   function setField(field) {
     return e => setForm(prev => ({ ...prev, [field]: e.target.value }))
@@ -20,7 +27,7 @@ export default function AuthPage() {
     setLoading(true)
     try {
       await loginWithGoogle()
-      navigate('/')
+      // Redirect handled by the user-state effect above.
     } catch (err) {
       console.error('Google sign-in failed:', err)
       setError(friendlyError(err.code))
@@ -40,7 +47,7 @@ export default function AuthPage() {
         if (!form.name.trim()) throw { code: 'no-name' }
         await registerWithEmail(form.email, form.password, form.name.trim())
       }
-      navigate('/')
+      // Redirect handled by the user-state effect above.
     } catch (err) {
       setError(friendlyError(err.code))
     } finally {
