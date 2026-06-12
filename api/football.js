@@ -1,7 +1,8 @@
 // Vercel serverless proxy for football-data.org.
 // The browser can't call football-data.org directly (no CORS) and we don't
 // want to ship the API token to the client, so all /api/football/* requests
-// are forwarded here with the token injected server-side.
+// are routed here (via the rewrite in vercel.json) with the token injected
+// server-side.
 //
 // Set the token in Vercel → Project → Settings → Environment Variables:
 //   FOOTBALL_API_KEY = <your football-data.org token>
@@ -12,13 +13,17 @@ export default async function handler(req, res) {
     return
   }
 
-  // Rebuild the upstream URL from the catch-all route params rather than
-  // req.url — on Vercel, [...path].js exposes the segments after
-  // /api/football/ as req.query.path, which is reliable across environments.
-  const { path = [], ...query } = req.query
-  const segments = Array.isArray(path) ? path : [path]
-  const qs = new URLSearchParams(query).toString()
-  const target = `https://api.football-data.org/${segments.join('/')}${qs ? `?${qs}` : ''}`
+  // vercel.json rewrites /api/football/<path> -> /api/football?path=<path>.
+  // Fall back to parsing req.url in case the rewrite param is missing.
+  const raw = req.query.path
+  let path = Array.isArray(raw) ? raw.join('/') : (raw || '')
+  if (!path) {
+    const m = req.url.match(/\/api\/football\/(.*)$/)
+    if (m) path = m[1]
+  }
+  path = String(path).replace(/^\/+/, '')
+
+  const target = `https://api.football-data.org/${path}`
 
   try {
     const apiRes = await fetch(target, {
