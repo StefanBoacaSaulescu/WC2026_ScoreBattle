@@ -6,6 +6,7 @@ import MatchCard from '../components/MatchCard'
 
 const FILTERS = [
   { key: 'all', label: 'All' },
+  { key: 'predicted', label: 'My Picks' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'live', label: '● Live' },
   { key: 'finished', label: 'Finished' },
@@ -25,6 +26,7 @@ export default function MatchesPage() {
   }, [])
 
   const filtered = matches.filter(m => {
+    if (filter === 'predicted') return Boolean(predictions[m.id])
     if (filter === 'upcoming') return isMatchScheduled(m)
     if (filter === 'live') return isMatchLive(m)
     if (filter === 'finished') return isMatchFinished(m)
@@ -66,10 +68,15 @@ export default function MatchesPage() {
           <div className="stat-value">{totalPts}</div>
           <div className="stat-label">My Points</div>
         </div>
-        <div className="stat-card">
+        <button
+          type="button"
+          className={`stat-card stat-card-clickable${filter === 'predicted' ? ' active' : ''}`}
+          onClick={() => setFilter(filter === 'predicted' ? 'all' : 'predicted')}
+          title="Show only matches you've predicted"
+        >
           <div className="stat-value">{predictedCount}</div>
-          <div className="stat-label">Predictions</div>
-        </div>
+          <div className="stat-label">Predictions {filter === 'predicted' ? '✓' : ''}</div>
+        </button>
         <div className="stat-card">
           <div className="stat-value">{exactCount}</div>
           <div className="stat-label">Exact Scores</div>
@@ -108,6 +115,8 @@ export default function MatchesPage() {
           <div className="empty-state-desc">
             {filter === 'live'
               ? 'No matches are live right now'
+              : filter === 'predicted'
+              ? "You haven't predicted any matches yet"
               : 'Check back when the tournament starts'}
           </div>
         </div>

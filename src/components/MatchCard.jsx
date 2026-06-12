@@ -1,5 +1,5 @@
 // src/components/MatchCard.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { isMatchFinished, isMatchLive, isMatchScheduled, calculatePoints } from '../lib/footballApi'
 import { toast } from './Toast'
 
@@ -40,6 +40,13 @@ export default function MatchCard({ match, prediction, onSave }) {
   const [home, setHome] = useState(prediction?.homeScore ?? '')
   const [away, setAway] = useState(prediction?.awayScore ?? '')
   const [saving, setSaving] = useState(false)
+
+  // Predictions load asynchronously, so the prop arrives after first render.
+  // Re-sync the inputs whenever the saved prediction changes (load or update).
+  useEffect(() => {
+    setHome(prediction?.homeScore ?? '')
+    setAway(prediction?.awayScore ?? '')
+  }, [prediction])
 
   const finished = isMatchFinished(match)
   const live = isMatchLive(match)
