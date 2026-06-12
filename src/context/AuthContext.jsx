@@ -16,6 +16,7 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,20 +26,43 @@ export function AuthProvider({ children }) {
         const ref = doc(db, 'users', firebaseUser.uid)
         const snap = await getDoc(ref)
         if (!snap.exists()) {
-          await setDoc(ref, {
+          const newProfile = {
             uid: firebaseUser.uid,
             displayName: firebaseUser.displayName || 'Player',
             email: firebaseUser.email,
             photoURL: firebaseUser.photoURL || null,
             createdAt: serverTimestamp(),
-          })
+          }
+          await setDoc(ref, newProfile)
+          setProfile(newProfile)
+        } else {
+          setProfile(snap.data())
         }
+      } else {
+        setProfile(null)
       }
       setUser(firebaseUser)
       setLoading(false)
     })
     return unsub
   }, [])
+
+  // Update the current user's profile fields (e.g. photoURL, displayName).
+  // The Firestore user doc is the source of truth used across the app, so the
+  // photo can be any size (a resized data URL) without auth photoURL limits.
+  async function updateUserProfile(fields) {
+    if (!auth.currentUser) return
+    const ref = doc(db, 'users', auth.currentUser.uid)
+    await setDoc(ref, fields, { merge: true })
+    setProfile((prev) => ({ ...prev, ...fields }))
+
+    // Best-effort sync to the Firebase Auth profile (short values only).
+    if (fields.displayName !== undefined) {
+      try {
+        await updateProfile(auth.currentUser, { displayName: fields.displayName })
+      } catch { /* non-fatal */ }
+    }
+  }
 
   async function loginWithGoogle() {
     const provider = new GoogleAuthProvider()
@@ -68,7 +92,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, loginWithGoogle, registerWithEmail, loginWithEmail, logout }}
+      value={{ user, profile, loading, loginWithGoogle, registerWithEmail, loginWithEmail, logout, updateUserProfile }}
     >
       {children}
     </AuthContext.Provider>

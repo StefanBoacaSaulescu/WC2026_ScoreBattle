@@ -6,6 +6,7 @@ import Toast from './components/Toast'
 import AuthPage from './pages/AuthPage'
 import MatchesPage from './pages/MatchesPage'
 import LeaderboardPage from './pages/LeaderboardPage'
+import ProfilePage from './pages/ProfilePage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/" element={<PrivateRoute><MatchesPage /></PrivateRoute>} />
         <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
+        <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

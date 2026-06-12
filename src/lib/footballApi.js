@@ -2,20 +2,20 @@
 // Uses football-data.org free tier API
 // Sign up at https://www.football-data.org/client/register
 // Free tier: 10 req/min, includes FIFA World Cup 2026 (competition code: WC)
-
-const BASE_URL = 'https://api.football-data.org/v4'
-const API_KEY = import.meta.env.VITE_FOOTBALL_API_KEY
-
-const headers = {
-  'X-Auth-Token': API_KEY,
-}
+//
+// football-data.org does NOT support CORS, so the browser cannot call it
+// directly. All requests go through a same-origin proxy that injects the
+// API token server-side:
+//   - dev:  Vite proxy (see vite.config.js)
+//   - prod: Vercel serverless function (see api/football/[...path].js)
+const BASE_URL = '/api/football/v4'
 
 // FIFA World Cup 2026 competition code
 const WC_CODE = 'WC'
 
 export async function getMatches() {
   try {
-    const res = await fetch(`${BASE_URL}/competitions/${WC_CODE}/matches`, { headers })
+    const res = await fetch(`${BASE_URL}/competitions/${WC_CODE}/matches`)
     if (!res.ok) throw new Error(`API error: ${res.status}`)
     const data = await res.json()
     return data.matches || []
@@ -27,7 +27,7 @@ export async function getMatches() {
 
 export async function getStandings() {
   try {
-    const res = await fetch(`${BASE_URL}/competitions/${WC_CODE}/standings`, { headers })
+    const res = await fetch(`${BASE_URL}/competitions/${WC_CODE}/standings`)
     if (!res.ok) throw new Error(`API error: ${res.status}`)
     const data = await res.json()
     return data.standings || []
@@ -39,7 +39,7 @@ export async function getStandings() {
 
 export async function getMatchById(matchId) {
   try {
-    const res = await fetch(`${BASE_URL}/matches/${matchId}`, { headers })
+    const res = await fetch(`${BASE_URL}/matches/${matchId}`)
     if (!res.ok) throw new Error(`API error: ${res.status}`)
     return await res.json()
   } catch (err) {
