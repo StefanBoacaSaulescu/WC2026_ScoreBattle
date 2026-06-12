@@ -22,6 +22,7 @@ export default function AuthPage() {
       await loginWithGoogle()
       navigate('/')
     } catch (err) {
+      console.error('Google sign-in failed:', err)
       setError(friendlyError(err.code))
     } finally {
       setLoading(false)
@@ -138,8 +139,13 @@ function friendlyError(code) {
     'auth/weak-password': 'Password must be at least 6 characters.',
     'auth/invalid-email': 'Invalid email address.',
     'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+    'auth/popup-blocked': 'Popup was blocked by the browser. Allow popups and retry.',
+    'auth/unauthorized-domain': 'This domain is not authorized in Firebase. Add it under Authentication → Settings → Authorized domains.',
+    'auth/invalid-api-key': 'Firebase API key is missing or invalid (check Vercel env vars).',
+    'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication.',
     'auth/invalid-credential': 'Incorrect email or password.',
     'no-name': 'Please enter a display name.',
   }
-  return map[code] || 'Something went wrong. Please try again.'
+  // Fall back to showing the raw code so deployment issues are diagnosable.
+  return map[code] || `Something went wrong${code ? ` (${code})` : ''}. Please try again.`
 }
