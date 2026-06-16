@@ -407,6 +407,69 @@ input {
 .pts-1 { background: rgba(59,130,246,0.12); color: #93c5fd; }
 .pts-0 { background: rgba(107,114,128,0.1); color: var(--text-muted); }
 
+/* Lock hint (kickoff lock + hidden predictions) */
+.lock-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Predictions page — everyone's picks per match */
+.pred-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.pred-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.pred-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pred-avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.7rem;
+}
+
+.pred-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pred-score {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.pred-row .prediction-points { margin-left: 0; }
+
+.pred-hidden {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pred-mypick { font-size: 0.82rem; color: var(--text-dim); }
+
 /* Filters */
 .filters {
   display: flex;
@@ -714,11 +777,51 @@ input {
 
 /* Responsive */
 @media (max-width: 600px) {
+  .page { padding: 1.5rem 1rem 3rem; }
+
+  /* Nav reflows to two rows: logo + avatar on top, tabs centered below. */
+  .nav-inner {
+    flex-wrap: wrap;
+    height: auto;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+    gap: 0.55rem 1rem;
+  }
+  .nav-logo { font-size: 1.25rem; }
+  .nav-username { display: none; }
+  .nav-user { order: 1; gap: 0.5rem; }
+  .nav-links {
+    order: 2;
+    flex-basis: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .nav-link { padding: 0.35rem 0.7rem; }
+
   .stats-row { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .stat-card { padding: 0.9rem 0.5rem; }
   .stat-value { font-size: 1.6rem; }
+
+  .match-card { padding: 1rem 1rem; }
   .match-teams { gap: 0.5rem; }
   .team-name-short { font-size: 1.2rem; }
-  .nav-logo { font-size: 1.3rem; }
+  .team-flag { font-size: 1.5rem; }
+
+  /* Let the score inputs + button wrap under the label instead of overflowing. */
+  .prediction-row { flex-wrap: wrap; gap: 0.5rem; }
+  .prediction-inputs { flex-wrap: wrap; }
+
   .page-title { font-size: 2rem; }
   .leaderboard-table th, .leaderboard-table td { padding: 0.7rem 0.6rem; }
+}
+
+@media (max-width: 440px) {
+  .nav-logo { font-size: 1.1rem; }
+  .page-title { font-size: 1.7rem; }
+  /* Drop the least-important leaderboard column (Predicted) on tiny screens. */
+  .leaderboard-table th:nth-child(5),
+  .leaderboard-table td:nth-child(5) { display: none; }
+  .leaderboard-table th, .leaderboard-table td { padding: 0.6rem 0.45rem; font-size: 0.82rem; }
+  .lb-rank { font-size: 1.1rem; width: 28px; }
+  .lb-avatar { width: 28px; height: 28px; }
 }

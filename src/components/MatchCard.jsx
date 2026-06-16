@@ -1,45 +1,19 @@
 // src/components/MatchCard.jsx
 import { useState, useEffect } from 'react'
-import { isMatchFinished, isMatchLive, isMatchScheduled, calculatePoints } from '../lib/footballApi'
+import { isMatchFinished, isMatchLive, isMatchScheduled, isPredictionLocked, calculatePoints } from '../lib/footballApi'
+import { formatDate } from '../lib/display'
+import { useNow } from '../hooks/useNow'
+import MatchTeams from './MatchTeams'
 import { toast } from './Toast'
-
-const FLAG_MAP = {
-  'United States': '🇺🇸', 'Canada': '🇨🇦', 'Mexico': '🇲🇽',
-  'Brazil': '🇧🇷', 'Argentina': '🇦🇷', 'Uruguay': '🇺🇾', 'Colombia': '🇨🇴',
-  'Germany': '🇩🇪', 'France': '🇫🇷', 'Spain': '🇪🇸', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-  'Portugal': '🇵🇹', 'Netherlands': '🇳🇱', 'Belgium': '🇧🇪', 'Italy': '🇮🇹',
-  'Japan': '🇯🇵', 'South Korea': '🇰🇷', 'Australia': '🇦🇺',
-  'Morocco': '🇲🇦', 'Senegal': '🇸🇳', 'Nigeria': '🇳🇬',
-  'Saudi Arabia': '🇸🇦', 'Iran': '🇮🇷', 'Qatar': '🇶🇦',
-  'Croatia': '🇭🇷', 'Serbia': '🇷🇸', 'Poland': '🇵🇱',
-  'Switzerland': '🇨🇭', 'Denmark': '🇩🇰', 'Ecuador': '🇪🇨',
-  'Cameroon': '🇨🇲', 'Ghana': '🇬🇭', 'Tunisia': '🇹🇳',
-  'Costa Rica': '🇨🇷', 'Panama': '🇵🇦', 'Honduras': '🇭🇳',
-  'Venezuela': '🇻🇪', 'Peru': '🇵🇪', 'Chile': '🇨🇱',
-  'Austria': '🇦🇹', 'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-  'Czech Republic': '🇨🇿', 'Hungary': '🇭🇺', 'Slovakia': '🇸🇰',
-  'Slovenia': '🇸🇮', 'Albania': '🇦🇱', 'Romania': '🇷🇴',
-  'Turkey': '🇹🇷', 'Ukraine': '🇺🇦', 'Greece': '🇬🇷',
-  'Egypt': '🇪🇬', 'Algeria': '🇩🇿', 'Mali': '🇲🇱',
-  'Ivory Coast': '🇨🇮', 'Zambia': '🇿🇲', 'South Africa': '🇿🇦',
-  'New Zealand': '🇳🇿', 'Indonesia': '🇮🇩',
-  'Iraq': '🇮🇶', 'Jordan': '🇯🇴', 'Uzbekistan': '🇺🇿',
-  'China PR': '🇨🇳',
-}
-
-function getFlag(teamName) {
-  return FLAG_MAP[teamName] || '🏳️'
-}
-
-function formatDate(utcDate) {
-  const d = new Date(utcDate)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
 
 export default function MatchCard({ match, prediction, onSave }) {
   const [home, setHome] = useState(prediction?.homeScore ?? '')
   const [away, setAway] = useState(prediction?.awayScore ?? '')
   const [saving, setSaving] = useState(false)
+
+  // Ticking clock so the lock flips the instant kickoff passes, even if the
+  // page has been left open for hours without a refresh.
+  const now = useNow()
 
   // Predictions load asynchronously, so the prop arrives after first render.
   // Re-sync the inputs whenever the saved prediction changes (load or update).
@@ -51,7 +25,10 @@ export default function MatchCard({ match, prediction, onSave }) {
   const finished = isMatchFinished(match)
   const live = isMatchLive(match)
   const scheduled = isMatchScheduled(match)
-  const canPredict = !finished && !live
+  // Locked once the match has finished, gone live, OR its kickoff time has
+  // passed (the case a stale open tab used to miss). Mirrored by Firestore rules.
+  const locked = isPredictionLocked(match, now)
+  const canPredict = !locked
 
   const points = finished && prediction
     ? calculatePoints(prediction, match)
@@ -62,19 +39,24 @@ export default function MatchCard({ match, prediction, onSave }) {
       toast('Enter both scores', 'error')
       return
     }
+    // Final guard: re-check at the moment of save in case kickoff passed while
+    // the form was sitting filled in. The server rule enforces this too.
+    if (isPredictionLocked(match, Date.now())) {
+      toast('Match has started — predictions are locked', 'error')
+      return
+    }
     setSaving(true)
     try {
       await onSave(match.id, Number(home), Number(away))
       toast('Prediction saved ✓')
-    } catch {
-      toast('Failed to save', 'error')
+    } catch (err) {
+      // A rejected write past kickoff surfaces here too (server-side lock).
+      const locked = err?.code === 'permission-denied'
+      toast(locked ? 'Match has started — predictions are locked' : 'Failed to save', 'error')
     } finally {
       setSaving(false)
     }
   }
-
-  const homeTeam = match.homeTeam?.name || 'TBD'
-  const awayTeam = match.awayTeam?.name || 'TBD'
 
   return (
     <div className="match-card">
@@ -83,35 +65,13 @@ export default function MatchCard({ match, prediction, onSave }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {live && <span className="badge badge-live">● LIVE</span>}
           {finished && <span className="badge badge-finished">FINAL</span>}
-          {scheduled && <span className="badge badge-scheduled">UPCOMING</span>}
+          {scheduled && !locked && <span className="badge badge-scheduled">UPCOMING</span>}
+          {locked && !live && !finished && <span className="badge badge-gold">🔒 LOCKED</span>}
           <span className="match-date">{formatDate(match.utcDate)}</span>
         </div>
       </div>
 
-      <div className="match-teams">
-        {/* Home */}
-        <div className="match-team">
-          <span className="team-flag">{getFlag(homeTeam)}</span>
-          <span className="team-name-short">{homeTeam.toUpperCase().slice(0, 3)}</span>
-          <span className="match-group" style={{ fontSize: '0.75rem' }}>{homeTeam}</span>
-        </div>
-
-        {/* Score or VS */}
-        {finished ? (
-          <div className="match-score-actual">
-            {match.score.fullTime.home} – {match.score.fullTime.away}
-          </div>
-        ) : (
-          <div className="match-vs">VS</div>
-        )}
-
-        {/* Away */}
-        <div className="match-team away">
-          <span className="team-flag">{getFlag(awayTeam)}</span>
-          <span className="team-name-short">{awayTeam.toUpperCase().slice(0, 3)}</span>
-          <span className="match-group" style={{ fontSize: '0.75rem' }}>{awayTeam}</span>
-        </div>
-      </div>
+      <MatchTeams match={match} />
 
       {/* Prediction row */}
       <div className="prediction-row">
@@ -152,15 +112,17 @@ export default function MatchCard({ match, prediction, onSave }) {
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-dim)' }}>
               {prediction.homeScore} – {prediction.awayScore}
             </span>
-            {points !== null && (
+            {points !== null ? (
               <span className={`prediction-points pts-${points}`} style={{ marginLeft: '0.75rem' }}>
                 {points === 3 ? '🎯' : points === 1 ? '👍' : '✕'} {points} pts
               </span>
+            ) : (
+              <span className="lock-hint" style={{ marginLeft: 'auto' }}>🔒 Locked</span>
             )}
           </div>
         ) : (
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-            No prediction placed
+          <span className="lock-hint" style={{ fontStyle: 'italic' }}>
+            🔒 No pick — locked at kickoff
           </span>
         )}
       </div>

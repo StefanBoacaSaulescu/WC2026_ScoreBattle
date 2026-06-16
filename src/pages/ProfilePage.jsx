@@ -1,6 +1,7 @@
 // src/pages/ProfilePage.jsx
 import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { syncMatchesToFirestore } from '../lib/matchSync'
 import { toast } from '../components/Toast'
 
 // Resize/compress an image file to a square JPEG data URL so it stays small
@@ -30,6 +31,20 @@ export default function ProfilePage() {
   const [preview, setPreview] = useState(null)
   const [displayName, setDisplayName] = useState(profile?.displayName || user?.displayName || '')
   const [saving, setSaving] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+
+  async function handleSyncFixtures() {
+    setSyncing(true)
+    try {
+      const count = await syncMatchesToFirestore()
+      toast(`Synced ${count} fixture${count !== 1 ? 's' : ''} ✓`)
+    } catch (err) {
+      console.error('Fixture sync failed:', err)
+      toast(err?.code === 'permission-denied' ? 'Admin access required' : 'Sync failed', 'error')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const currentPhoto = preview || profile?.photoURL || user?.photoURL || null
   const initials = (profile?.displayName || user?.displayName || user?.email || '?')
@@ -152,6 +167,22 @@ export default function ProfilePage() {
           {saving ? 'Saving…' : 'Save changes'}
         </button>
       </div>
+
+      {/* Admin tools — only an admin can write the fixture kickoff times that
+          the prediction lock relies on. */}
+      {profile?.admin && (
+        <div className="card" style={{ marginTop: '1.5rem' }}>
+          <h2 style={{ fontSize: '1rem', marginBottom: '0.4rem' }}>Admin · Fixtures</h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
+            Sync kickoff times from the football API into Firestore so predictions
+            lock automatically at kickoff. Runs quietly when you open the app; use
+            this to force a refresh (e.g. after knockout fixtures are confirmed).
+          </p>
+          <button className="btn btn-secondary" onClick={handleSyncFixtures} disabled={syncing}>
+            {syncing ? 'Syncing…' : 'Sync fixtures now'}
+          </button>
+        </div>
+      )}
     </main>
   )
 }

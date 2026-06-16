@@ -61,6 +61,27 @@ export function isMatchLive(match) {
   return match.status === 'IN_PLAY' || match.status === 'PAUSED'
 }
 
+// Kickoff time in ms (NaN if unknown). Every fixture has a scheduled kickoff,
+// so "has the match started?" is a pure clock comparison — no live feed needed.
+export function kickoffMs(match) {
+  return match?.utcDate ? new Date(match.utcDate).getTime() : NaN
+}
+
+// Has the match kicked off as of `nowMs` (defaults to now)?
+// Independent of the (cacheable / stale) API status, so a tab left open past
+// kickoff still reports the match as started.
+export function hasKickedOff(match, nowMs = Date.now()) {
+  const k = kickoffMs(match)
+  return Number.isFinite(k) && nowMs >= k
+}
+
+// A prediction can only be placed/changed before kickoff and only while the
+// match hasn't finished. This is the single source of truth for the lock,
+// mirrored server-side by the Firestore rules.
+export function isPredictionLocked(match, nowMs = Date.now()) {
+  return isMatchFinished(match) || isMatchLive(match) || hasKickedOff(match, nowMs)
+}
+
 // Score calculation for a single prediction vs actual result
 // 3 pts = exact score, 1 pt = correct outcome, 0 = wrong
 export function calculatePoints(prediction, match) {

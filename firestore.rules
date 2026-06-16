@@ -2,23 +2,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users: anyone authenticated can read all profiles,
-    // only write your own
-    match /users/{uid} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+    // An admin is a user whose own doc has `admin: true`. Set this manually,
+    // once, from the Firebase console — it can never be granted from the client
+    // (see the users rule below).
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.admin == true;
     }
 
-    // Predictions: anyone authenticated can read all predictions (for leaderboard),
-    // only write your own
-    match /predictions/{predId} {
+    // A prediction may only be written while its match has NOT kicked off.
+    // The kickoff time lives in /matches/{matchId} (written by the admin sync).
+    // If no kickoff is on record yet we allow the write (the sync just hasn't
+    // run for that fixture); once a kickoff is known, it is strictly enforced.
+    function matchNotStarted(matchId) {
+      let path = /databases/$(database)/documents/matches/$(matchId);
+      return !exists(path) || get(path).data.kickoff > request.time;
+    }
+
+    // Users: anyone authenticated can read all profiles; you may only write your
+    // own — and you may never change your own `admin` flag from the client.
+    match /users/{uid} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
+        && request.auth.uid == uid
+        && (
+          !('admin' in request.resource.data)
+          || (resource != null && request.resource.data.admin == resource.data.admin)
+        );
+    }
+
+    // Matches (kickoff times): readable by anyone authenticated, writable only
+    // by an admin. This is the trusted clock the prediction lock relies on.
+    match /matches/{matchId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Predictions: anyone authenticated can read all predictions (leaderboard /
+    // predictions tab), you may only write your own, scores must be valid, and
+    // the match must not have started yet.
+    match /predictions/{predId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.homeScore is int
         && request.resource.data.awayScore is int
         && request.resource.data.homeScore >= 0
-        && request.resource.data.awayScore >= 0;
+        && request.resource.data.awayScore >= 0
+        && matchNotStarted(string(request.resource.data.matchId));
+      allow delete: if false;
     }
   }
 }

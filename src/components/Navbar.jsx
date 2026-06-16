@@ -26,6 +26,12 @@ export default function Navbar() {
               Matches
             </NavLink>
             <NavLink
+              to="/predictions"
+              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+            >
+              Predictions
+            </NavLink>
+            <NavLink
               to="/leaderboard"
               className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
             >
@@ -43,7 +49,7 @@ export default function Navbar() {
                   : initials
                 }
               </div>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span className="nav-username" style={{ fontSize: '0.85rem', color: 'var(--text-dim)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {name}
               </span>
             </Link>
