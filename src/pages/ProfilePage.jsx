@@ -1,5 +1,6 @@
 // src/pages/ProfilePage.jsx
 import { useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { syncMatchesToFirestore } from '../lib/matchSync'
 import { toast } from '../components/Toast'
@@ -178,9 +179,14 @@ export default function ProfilePage() {
             lock automatically at kickoff. Runs quietly when you open the app; use
             this to force a refresh (e.g. after knockout fixtures are confirmed).
           </p>
-          <button className="btn btn-secondary" onClick={handleSyncFixtures} disabled={syncing}>
-            {syncing ? 'Syncing…' : 'Sync fixtures now'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button className="btn btn-secondary" onClick={handleSyncFixtures} disabled={syncing}>
+              {syncing ? 'Syncing…' : 'Sync fixtures now'}
+            </button>
+            <Link className="btn btn-secondary" to="/admin">
+              Backfill predictions
+            </Link>
+          </div>
         </div>
       )}
     </main>

@@ -82,3 +82,24 @@ export async function getAllUsers() {
   })
   return users
 }
+
+// Admin-only: write a prediction on behalf of another player, bypassing the
+// kickoff lock. Used to backfill picks that were made before the platform
+// existed. Tagged with `backfilledBy` so the entry is auditable. The Firestore
+// rules still gate this on the caller actually being an admin.
+export async function adminSavePrediction(targetUid, matchId, homeScore, awayScore, adminUid) {
+  const id = predictionId(targetUid, matchId)
+  await setDoc(
+    doc(db, 'predictions', id),
+    {
+      uid: targetUid,
+      matchId,
+      homeScore: Number(homeScore),
+      awayScore: Number(awayScore),
+      updatedAt: serverTimestamp(),
+      backfilledBy: adminUid,
+      backfilledAt: serverTimestamp(),
+    },
+    { merge: true }
+  )
+}

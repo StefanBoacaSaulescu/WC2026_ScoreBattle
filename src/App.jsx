@@ -10,11 +10,20 @@ import MatchesPage from './pages/MatchesPage'
 import PredictionsPage from './pages/PredictionsPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import ProfilePage from './pages/ProfilePage'
+import AdminPage from './pages/AdminPage'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading-page"><div className="spinner" /></div>
   if (!user) return <Navigate to="/auth" replace />
+  return children
+}
+
+function AdminRoute({ children }) {
+  const { user, profile, loading } = useAuth()
+  if (loading) return <div className="loading-page"><div className="spinner" /></div>
+  if (!user) return <Navigate to="/auth" replace />
+  if (!profile?.admin) return <Navigate to="/" replace />
   return children
 }
 
@@ -37,6 +46,7 @@ export default function App() {
         <Route path="/predictions" element={<PrivateRoute><PredictionsPage /></PrivateRoute>} />
         <Route path="/leaderboard" element={<PrivateRoute><LeaderboardPage /></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+        <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

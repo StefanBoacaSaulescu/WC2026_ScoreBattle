@@ -40,18 +40,26 @@ service cloud.firestore {
     }
 
     // Predictions: anyone authenticated can read all predictions (leaderboard /
-    // predictions tab), you may only write your own, scores must be valid, and
-    // the match must not have started yet.
+    // predictions tab). Scores must always be valid ints. A normal user may only
+    // write their OWN prediction and only before kickoff. An admin may write any
+    // player's prediction at any time — this is the trusted backfill path for
+    // picks that were made (elsewhere) before the platform existed.
     match /predictions/{predId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null
-        && request.resource.data.uid == request.auth.uid
         && request.resource.data.homeScore is int
         && request.resource.data.awayScore is int
         && request.resource.data.homeScore >= 0
         && request.resource.data.awayScore >= 0
-        && matchNotStarted(string(request.resource.data.matchId));
-      allow delete: if false;
+        && (
+          isAdmin()
+          || (
+            request.resource.data.uid == request.auth.uid
+            && matchNotStarted(string(request.resource.data.matchId))
+          )
+        );
+      // Only an admin can remove a prediction (e.g. to fix a bad backfill).
+      allow delete: if isAdmin();
     }
   }
 }
